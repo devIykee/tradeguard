@@ -1,0 +1,46 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "TradeGuard Risk Rules Configuration",
+  "description": "User-defined thresholds for trade validation rules",
+  "type": "object",
+  "required": ["maxLeverage", "maxOrderSizeUSDT", "maxPriceDeviationPct", "allowedSymbols"],
+  "properties": {
+    "maxLeverage": {
+      "type": "number",
+      "description": "Maximum leverage multiplier for futures trades (e.g., 5 = 5x)",
+      "minimum": 1,
+      "maximum": 125
+    },
+    "maxOrderSizeUSDT": {
+      "type": "number",
+      "description": "Maximum notional order size in USDT",
+      "minimum": 1
+    },
+    "maxPriceDeviationPct": {
+      "type": "number",
+      "description": "Maximum allowed deviation between proposed price and live market price, as a percentage (e.g., 2.0 = 2%)",
+      "minimum": 0.1,
+      "maximum": 50
+    },
+    "allowedSymbols": {
+      "type": "array",
+      "description": "Whitelist of trading pairs the agent is allowed to trade",
+      "items": {
+        "type": "string",
+        "pattern": "^[A-Z]{2,10}USDT$"
+      },
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "symbolSpecificDeviations": {
+      "type": "object",
+      "description": "Optional per-symbol price deviation thresholds (overrides maxPriceDeviationPct for specific symbols)",
+      "additionalProperties": {
+        "type": "number",
+        "minimum": 0.1,
+        "maximum": 50
+      }
+    }
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,10 @@
+{
+  "maxLeverage": 5,
+  "maxOrderSizeUSDT": 1000,
+  "maxPriceDeviationPct": 2.0,
+  "allowedSymbols": [
+    "BTCUSDT",
+    "ETHUSDT",
+    "BNBUSDT"
+  ]
+}
