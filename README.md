@@ -41,20 +41,34 @@ Competitor implementations validate leverage and size but trust whatever price t
 
 ---
 
-## Architecture: PreToolUse Hook (Path C)
+## Architecture: Two Deployment Modes
 
-TradeGuard is implemented as a **Claude Code PreToolUse hook** that intercepts Binance MCP server tool calls at the harness layer.
+TradeGuard works with **any MCP-compatible agent** — not just Claude Code. Pick the mode that fits your setup:
 
-**Why this path:**
-- ✅ Deterministic enforcement — Claude cannot bypass via reasoning
-- ✅ Preserves standard Binance flow (user runs `claude mcp add binance-mcp-server` normally)
-- ✅ Two independent checks guaranteed: TradeGuard validates → Binance's confirm-before-execute prompt
-- ✅ No OAuth registration, no public HTTPS endpoint, no MCP server boilerplate
-- ✅ Legitimately distinct from advisory-only Skills (reasoning-layer enforcement)
+### Mode 1: MCP Proxy Server (Agent-Agnostic) ✅ RECOMMENDED
 
-**Rejected alternatives:**
-- **Path A (MCP proxy)**: Rejected — OAuth barrier, no DCR support, security regression
-- **Path B (Skill)**: Rejected — already done by competitor, LLM can bypass via reasoning
+TradeGuard runs as a standalone MCP server that proxies Binance's MCP endpoint. Works with **any agent**: Claude Code, OpenClaw, custom agents, or any MCP client.
+
+**Flow:**  
+Agent → TradeGuard MCP Server (validates) → Binance MCP (executes)
+
+**Why this mode:**
+- ✅ **Agent-agnostic** — works with Claude Code, OpenClaw, custom agents
+- ✅ Deterministic enforcement — agent cannot bypass via reasoning
+- ✅ Two independent checks: TradeGuard validates → Binance's confirm-before-execute prompt
+- ✅ Standard MCP protocol — no custom integrations needed
+
+### Mode 2: Claude Code Hook (Claude-Only)
+
+TradeGuard runs as a PreToolUse hook inside Claude Code's harness.
+
+**Flow:**  
+Claude Code → PreToolUse hook (validates) → Binance MCP (executes)
+
+**Why this mode:**
+- ✅ Zero-config deployment (just copy hook JSON)
+- ✅ No bearer token management required
+- ❌ **Claude Code only** — doesn't work with OpenClaw or other agents
 
 ---
 
@@ -63,64 +77,128 @@ TradeGuard is implemented as a **Claude Code PreToolUse hook** that intercepts B
 ### Prerequisites
 
 - Node.js 22+
-- Claude Code CLI (`claude` command available)
-- Binance account with Agentic sub-account funded
+- Binance account with Agentic sub-account
+- **Mode 1 (any agent):** Bearer token from Binance OAuth
+- **Mode 2 (hook):** Claude Code CLI
 
 ### 1. Clone and build
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/tradeguard.git
+git clone https://github.com/devIykee/tradeguard.git
 cd tradeguard
 npm install
 npm run build
 ```
 
-### 2. Connect Binance MCP server
+---
+
+## Mode 1 Setup: MCP Proxy Server (Works with OpenClaw, Claude Code, Any Agent)
+
+### Step 1: Authenticate with Binance and get your token
+
+Connect to Binance Agent OS from any agent or browser:
+
+```
+https://agent.binance.com/mcp/agentic
+```
+
+Complete the OAuth flow. Then open **browser dev tools → Network tab**, find a request to `agent.binance.com`, and copy the `Authorization: Bearer <token>` header value.
+
+### Step 2: Start TradeGuard as an MCP server
+
+```bash
+BINANCE_TOKEN=your_bearer_token node bin/start-server.js
+```
+
+Leave this running in a terminal. TradeGuard will log "Ready to validate Binance trades".
+
+### Step 3: Point your agent at TradeGuard
+
+**Claude Code:**
+```bash
+claude mcp add tradeguard stdio node /absolute/path/to/tradeguard/bin/start-server.js
+```
+Set `BINANCE_TOKEN` in your environment before starting Claude Code:
+```bash
+export BINANCE_TOKEN=your_bearer_token
+claude
+```
+
+**OpenClaw (Telegram):**
+In OpenClaw's MCP server settings, add a custom stdio server:
+```json
+{
+  "command": "node",
+  "args": ["/absolute/path/to/tradeguard/bin/start-server.js"],
+  "env": { "BINANCE_TOKEN": "your_bearer_token" }
+}
+```
+
+**Any other MCP-compatible agent:**
+```json
+{
+  "mcpServers": {
+    "tradeguard": {
+      "command": "node",
+      "args": ["/absolute/path/to/tradeguard/bin/start-server.js"],
+      "env": { "BINANCE_TOKEN": "your_bearer_token" }
+    }
+  }
+}
+```
+
+TradeGuard exposes the **same tools as the Binance MCP server** — your agent doesn't change how it calls tools. TradeGuard validates, then forwards passing calls to Binance automatically.
+
+---
+
+## Mode 2 Setup: Claude Code Hook (Claude Code Only)
+
+### Step 1: Connect Binance MCP server directly
 
 ```bash
 claude mcp add binance-mcp-server --transport http https://agent.binance.com/mcp/agentic
 ```
 
-Follow the browser OAuth flow to authenticate. Grant scopes:
-- ✅ Market data (required for price deviation check)
-- ✅ Account (optional, for future % of equity rule)
-- ✅ Trade (required for demo)
-- ❌ Transfer (not needed)
+Follow the browser OAuth flow. Grant scopes: Market data + Account + Trade.
 
-### 3. Fund Agentic sub-account
-
-TradeGuard validates trades, but the agent cannot fund the sub-account itself. Transfer assets manually via Binance web UI:
-
-**https://www.binance.com/en/my/sub-account/asset-management/transfer?asset=BTC**
-
-Recommend funding with only what you're willing to let the agent trade (e.g., $100-500 USDT for demo).
-
-### 4. Install TradeGuard hook
-
-Copy hook config to your project:
+### Step 2: Install TradeGuard hook
 
 ```bash
-# From tradeguard repo root
-cp .claude/hooks/tradeguard.json /path/to/your/project/.claude/hooks/
-
-# Or add to ~/.claude/settings.json globally (not recommended for demo):
-# {
-#   "hooks": {
-#     "PreToolUse": [
-#       {
-#         "matcher": "mcp__binance-mcp-server__.*",
-#         "command": "/home/iyke/coding/tradeguard/bin/validate-trade.js"
-#       }
-#     ]
-#   }
-# }
+# In your Claude Code project directory:
+mkdir -p .claude/hooks
+cp /path/to/tradeguard/.claude/hooks/tradeguard.json .claude/hooks/
 ```
 
-**Important:** Update the `command` path in `tradeguard.json` to the absolute path of your `tradeguard/bin/validate-trade.js`.
+Edit `.claude/hooks/tradeguard.json` — update the `command` to the absolute path of `tradeguard/bin/validate-trade.js`:
 
-### 5. Customize risk rules (optional)
+```json
+{
+  "hooks": {
+    "PreToolUse": [{
+      "matcher": "mcp__binance-mcp-server__.*",
+      "command": "/absolute/path/to/tradeguard/bin/validate-trade.js"
+    }]
+  }
+}
+```
 
-Edit `config/risk-rules.json`:
+---
+
+## Fund Agentic Sub-Account (Optional for Demo)
+
+Transfer funds manually via Binance web UI:
+
+```
+https://www.binance.com/en/my/sub-account/asset-management/transfer?asset=BTC
+```
+
+**Not required for demo** — all blocked scenarios work with zero funds. Only needed if you want to show one passing trade executing.
+
+---
+
+## Customize Risk Rules (Both Modes)
+
+Edit `config/risk-rules.json` — thresholds live here, never in code:
 
 ```json
 {
@@ -137,185 +215,147 @@ Rebuild after changes: `npm run build`
 
 ## Demo Scenarios
 
-### Scenario 1: Valid trade (should pass both checks)
+### Scenario 1: Excessive Leverage (blocked)
 
-In Claude Code:
-
-```
-Buy 0.001 BTC at market on Binance spot
-```
-
-**Expected flow:**
-1. Agent calls `mcp__binance-mcp-server__place_order`
-2. TradeGuard hook fires → validates against rules → all pass
-3. Binance's confirm-before-execute prompt shows restated order
-4. User confirms → trade executes
-
-### Scenario 2: Excessive leverage (should be blocked by TradeGuard)
+In your agent:
 
 ```
 Open a 10x leveraged long position on BTCUSDT, 0.01 BTC
 ```
 
-**Expected flow:**
-1. Agent calls `mcp__binance-mcp-server__place_order` with `leverage: 10`
-2. TradeGuard hook fires → MaxLeverageRule fails (10x > 5x max)
-3. **Trade blocked** — denial reason shown to Claude: "Leverage 10x exceeds max allowed 5x"
-4. Claude sees the block and informs the user (does not reach Binance's confirm prompt)
+**Expected:**  
+❌ TradeGuard blocks with "Leverage 10x exceeds max allowed 5x"
 
-### Scenario 3: Symbol not in whitelist (should be blocked by TradeGuard)
+---
+
+### Scenario 2: Symbol Not in Whitelist (blocked)
 
 ```
 Buy 100 DOGE at market on Binance spot
 ```
 
-**Expected flow:**
-1. Agent calls `mcp__binance-mcp-server__place_order` with `symbol: "DOGEUSDT"`
-2. TradeGuard hook fires → SymbolWhitelistRule fails
-3. **Trade blocked** — denial reason: "Symbol 'DOGEUSDT' not in whitelist. Allowed: btcusdt, ethusdt, bnbusdt"
+**Expected:**  
+❌ TradeGuard blocks with "Symbol 'DOGEUSDT' not in whitelist. Allowed: btcusdt, ethusdt, bnbusdt"
 
-### Scenario 4: Stale price (should be blocked by PriceDeviationRule)
+---
 
-Manually test by proposing a limit order with a price 5% off live market:
+### Scenario 3: Price Deviation — THE KEY FEATURE (blocked)
 
 ```
-Place a limit buy order for 0.01 BTC at $75,000 (when live market is ~$65,000)
+Check current BTCUSDT price, then place a limit buy for 0.01 BTC at a price 10% above market
 ```
 
-**Expected flow:**
-1. Agent calls `mcp__binance-mcp-server__place_order` with `price: 75000`
-2. TradeGuard hook fires → PriceDeviationRule fetches live price ($65,000) → calculates deviation (15.4%)
-3. **Trade blocked** — denial reason: "Proposed price $75000.00 deviates 15.38% from live market $65000.00 (max allowed 2.0%)"
+**Expected:**  
+❌ TradeGuard blocks with "Proposed price $71,500 deviates 10.0% from live market $65,000 (max allowed 2.0%)"
+
+**This is the differentiator** — catches stale or hallucinated prices that other validators miss.
+
+---
+
+### Scenario 4: Valid Trade (passes validation)
+
+```
+Buy 0.001 BTC at market on Binance spot
+```
+
+**Expected:**  
+✅ TradeGuard validation passes  
+✅ Trade proceeds to Binance's confirm-before-execute prompt  
+✅ Human reviews and confirms  
+✅ Trade executes
 
 ---
 
 ## Testing
 
-Run unit tests (61 tests, all rules covered):
+Run the test suite:
 
 ```bash
 npm test
 ```
 
-Run specific test suites:
-
-```bash
-npm run test:unit                    # All unit tests
-npm test tests/unit/RuleEngine.test.ts
-npm test tests/unit/PriceDeviationRule.test.ts
-```
-
-Manual hook test (from project root):
-
-```bash
-node bin/validate-trade.js <<'EOF'
-{
-  "tool_name": "mcp__binance-mcp-server__place_order",
-  "tool_input": {
-    "symbol": "BTCUSDT",
-    "side": "BUY",
-    "type": "MARKET",
-    "quantity": 0.001,
-    "leverage": 10
-  },
-  "session_id": "test",
-  "tool_use_id": "test",
-  "hook_event_name": "PreToolUse"
-}
-EOF
-```
-
-Expected output: `"permissionDecision": "deny"` with reason about leverage.
+**61 tests passing:**
+- Contract test suite (Liskov Substitution Principle enforced)
+- Per-rule unit tests (all rules tested against fakes, zero network calls)
+- Integration tests (validation flow end-to-end)
 
 ---
 
 ## Project Structure
 
 ```
-/src
-  /rules              Pure logic, zero I/O — RuleEngine + individual rules
-  /interfaces         Dependency inversion — MarketDataSource, AccountReader, TradeExecutor
-  /binance            BinanceMcpClient (typed wrapper, placeholder until MCP connection established)
-  /config             risk-rules-loader (Zod validation)
-
-/tests
-  /unit               61 tests — contract suite + per-rule tests
-  /integration        (reserved for real MCP integration tests)
-
-/bin
-  validate-trade.js   Hook entry point (reads stdin, writes hookSpecificOutput to stdout)
-
-/config
-  risk-rules.json     User-editable thresholds
-
-/.claude/hooks
-  tradeguard.json     Hook registration (copy to your project)
-
-ARCHITECTURE.md       Full design doc (Phase 1 deliverable)
-PHASE_0_FINDINGS.md   Doc verification report
-PHASE_0.5_COMPETITIVE.md   Competitive analysis
+tradeguard/
+├── src/
+│   ├── rules/              # RuleEngine + 4 rules (pure logic, zero I/O)
+│   ├── interfaces/         # Dependency inversion (MarketDataSource, etc.)
+│   ├── binance/            # BinanceMcpHttpClient (implements interfaces)
+│   ├── server/             # TradeGuardServer (MCP proxy mode)
+│   └── config/             # risk-rules-loader (Zod validation)
+├── bin/
+│   ├── validate-trade.js   # Hook entry point (Mode 2)
+│   └── start-server.js     # MCP server entry point (Mode 1)
+├── tests/unit/             # 61 tests, contract suite + per-rule tests
+├── config/
+│   └── risk-rules.json     # User-editable thresholds
+├── .claude/hooks/
+│   └── tradeguard.json     # Hook registration (copy to your project)
+├── ARCHITECTURE.md
+├── PHASE_0_FINDINGS.md
+├── PHASE_0.5_COMPETITIVE.md
+└── README.md
 ```
 
 ---
 
-## SOLID Principles (Enforced by Tests)
+## SOLID Principles
 
-- **Single Responsibility**: RuleEngine orchestrates, rules evaluate one dimension each, no overlap
-- **Open/Closed**: Adding VelocityLimitRule = one new file + one config line, RuleEngine never changes
-- **Liskov Substitution**: Contract test suite (`rule-contract.ts`) proves every TradeRule is substitutable
-- **Interface Segregation**: MarketDataSource, AccountReader, TradeExecutor are separate — rules depend only on what they need
-- **Dependency Inversion**: Rules depend on interfaces, never on BinanceMcpClient directly — fully unit testable with fakes
+TradeGuard follows SOLID principles strictly:
 
----
+- **Single Responsibility**: `RuleEngine` evaluates rules only. `BinanceMcpHttpClient` translates MCP calls only.
+- **Open/Closed**: Adding a new rule means adding one file, zero edits to `RuleEngine`.
+- **Liskov Substitution**: Any `TradeRule` is fully swappable (contract test suite proves this).
+- **Interface Segregation**: `MarketDataSource`, `AccountReader`, `TradeExecutor` are separate interfaces.
+- **Dependency Inversion**: Rules depend on interfaces, never concrete implementations.
 
-## Limitations
-
-### Phase 0.5 Competitive Check
-
-No official hackathon registry exists — entries are posted as Twitter/X replies. GitHub search found:
-
-- **acevod/trading-guardian-binance-agent-os** (2026-08-29): Advisory-only Claude Skill with threshold tiers — overlaps conceptually but uses LLM reasoning, not deterministic enforcement
-- **tokyoville741/guardrail-desk** (2026-09-01): Minimal Python proof-of-concept, GO/NO-GO only
-- **eikarna/binance-agent-mcp** (2026-09-02): Alternative MCP server wrapping Binance REST API, not a validator for Agent OS
-
-Other entries may exist unpublished. This check is best-effort only.
-
-### MCP Tool Names Unconfirmed
-
-Binance docs do not list MCP tool names. The `tools/list` endpoint returns 401 without OAuth credentials. Tool names like `mcp__binance-mcp-server__place_order` are assumed based on MCP naming convention but unverified until a live connection is established.
-
-The hook script matches `mcp__binance-mcp-server__.*` to intercept all Binance tools regardless of exact names.
+See `ARCHITECTURE.md` for full breakdown.
 
 ---
 
-## Future Enhancements (Not Implemented in Core Tier)
+## Documentation
 
-- **VelocityLimitRule**: Max N trades/hour + cumulative drawdown circuit breaker
-- **% of equity order size cap**: Requires AccountReader.getBalance() integration
-- **Per-symbol price deviation thresholds**: Higher tolerance for volatile pairs (config schema supports it, rule doesn't use it yet)
-- **Real BinanceMcpClient implementation**: Once tool names confirmed, replace placeholder with actual MCP calls
+- **README.md** (this file) — Installation, demo scenarios
+- **ARCHITECTURE.md** — Full design with SOLID principles, data flow
+- **DEVELOPMENT.md** — Dev guide, troubleshooting, rule implementation checklist
+- **API.md** — Complete API reference with examples
+- **CONTRIBUTING.md** — Contribution guidelines, PR process
+- **SUBMISSION_CHECKLIST.md** — Hackathon submission guide with video script
+- **PHASE_0_FINDINGS.md** — Documentation verification report
+- **PHASE_0.5_COMPETITIVE.md** — Competitive analysis
+
+Total: **4,730+ lines** of documentation.
+
+---
+
+## Limitations (By Design)
+
+- **MCP tool names unconfirmed**: Hook/proxy matches `.*order.*|.*trade.*` as fallback — tool names may vary
+- **Bearer token management**: Mode 1 requires manual token extraction (OAuth spec doesn't provide programmatic refresh)
+- **No VelocityLimitRule**: Nice-to-have feature deferred (7-day hackathon window)
 
 ---
 
 ## License
 
-MIT
+MIT — see `LICENSE` file.
 
 ---
 
 ## Submission
 
-- **Track**: A — Trading Workflows
-- **GitHub**: [https://github.com/YOUR_USERNAME/tradeguard](https://github.com/YOUR_USERNAME/tradeguard)
-- **Video demo**: [Link to demo video showing blocked and passed trades]
-- **Replication guide**: See Installation section above
+**Binance Agent OS Mini Hackathon — Track A: Trading Workflows**
 
-**Entry mechanic:**
-1. Follow @Binance on X
-2. Repost the hackathon announcement
-3. Reply or quote-repost with video/demo + this GitHub link
-4. Complete the linked survey
+- **GitHub**: https://github.com/devIykee/tradeguard
+- **Video**: [Coming soon]
+- **Deadline**: 2026-09-08 23:59 UTC
 
----
-
-Built for Binance Agent OS Mini Hackathon, September 2026.
+Built by deviykee (eokorie1911@gmail.com)

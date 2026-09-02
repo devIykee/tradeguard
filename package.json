@@ -13,9 +13,12 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:unit": "vitest run tests/unit",
-    "test:integration": "vitest run tests/integration"
+    "test:integration": "vitest run tests/integration",
+    "start": "node bin/start-server.js",
+    "start:hook": "echo 'Hook mode: copy .claude/hooks/tradeguard.json to your project'"
   },
   "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.30.0",
     "zod": "^3.23.8"
   },
   "devDependencies": {
