@@ -323,14 +323,17 @@ See `ARCHITECTURE.md` for full breakdown.
 
 ## Documentation
 
-- **README.md** (this file) — Installation, demo scenarios
-- **ARCHITECTURE.md** — Full design with SOLID principles, data flow
-- **DEVELOPMENT.md** — Dev guide, troubleshooting, rule implementation checklist
-- **API.md** — Complete API reference with examples
-- **CONTRIBUTING.md** — Contribution guidelines, PR process
-- **SUBMISSION_CHECKLIST.md** — Hackathon submission guide with video script
-- **PHASE_0_FINDINGS.md** — Documentation verification report
-- **PHASE_0.5_COMPETITIVE.md** — Competitive analysis
+| File | Description |
+|------|-------------|
+| [README.md](README.md) | Installation, demo scenarios (this file) |
+| [CONTRIBUTING.md](CONTRIBUTING.md) | Contribution guidelines, PR process |
+| [docs/architecture/ARCHITECTURE.md](docs/architecture/ARCHITECTURE.md) | Full design, SOLID principles, data flow |
+| [docs/architecture/API.md](docs/architecture/API.md) | Complete API reference with examples |
+| [docs/architecture/DEVELOPMENT.md](docs/architecture/DEVELOPMENT.md) | Dev guide, troubleshooting, rule checklist |
+| [docs/guides/DEMO_VIDEO_GUIDE.md](docs/guides/DEMO_VIDEO_GUIDE.md) | Demo recording guide with video script |
+| [docs/submission/HACKATHON_FORM_ANSWERS.md](docs/submission/HACKATHON_FORM_ANSWERS.md) | Pre-written hackathon form answers |
+| [docs/submission/PHASE_0_FINDINGS.md](docs/submission/PHASE_0_FINDINGS.md) | Binance doc verification report |
+| [docs/submission/PHASE_0.5_COMPETITIVE.md](docs/submission/PHASE_0.5_COMPETITIVE.md) | Competitive analysis |
 
 Total: **4,730+ lines** of documentation.
 
