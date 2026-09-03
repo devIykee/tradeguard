@@ -368,7 +368,7 @@ File: `config/risk-rules.json`
 **Diagnostics:**
 ```bash
 # 1. Check hook registration
-cat .claude/hooks/tradeguard.json
+python3 -c "import json; print(json.load(open('.claude/settings.json')).get('hooks'))"
 # Verify: matcher is "mcp__binance-mcp-server__.*"
 # Verify: command path is absolute and correct
 

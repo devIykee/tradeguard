@@ -134,7 +134,7 @@ Transfer $100-500 USDT to Agentic sub-account (enough for demo trades)
 
 ```bash
 mkdir -p /path/to/demo/project/.claude/hooks
-cp /home/iyke/coding/tradeguard/.claude/hooks/tradeguard.json /path/to/demo/project/.claude/hooks/
+# Copy the hooks block from tradeguard/.claude/settings.json into your own settings.json
 
 # Edit the hook config to use absolute path:
 # "command": "/home/iyke/coding/tradeguard/bin/validate-trade.js"

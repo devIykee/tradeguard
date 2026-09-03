@@ -79,10 +79,9 @@ claude mcp add binance-mcp-server --transport http https://agent.binance.com/mcp
 
 ```bash
 # In your demo project directory:
-mkdir -p .claude/hooks
-cp /home/iyke/coding/tradeguard/.claude/hooks/tradeguard.json .claude/hooks/
+# Hooks go in settings.json — see README for the exact block to add
 
-# Edit .claude/hooks/tradeguard.json:
+# Edit ~/.claude/settings.json (or .claude/settings.json):
 # Update "command" path to absolute path of validate-trade.js
 ```
 

@@ -7,7 +7,7 @@
 ## ✅ Setup Complete
 
 - Binance MCP server: Connected to `/home/iyke` project
-- TradeGuard hook: Installed at `/home/iyke/.claude/hooks/tradeguard.json`
+- TradeGuard hook: Registered in each profile's `settings.json` (`~/.claude`, `~/.claude-b`, `~/.claude-c`)
 - Hook verification: Tested and working (blocks 10x leverage, blocks DOGEUSDT)
 
 ---
@@ -186,7 +186,7 @@ Two independent safety layers:
 
 **Type in Claude Code or terminal:**
 ```bash
-cat /home/iyke/.claude/hooks/tradeguard.json
+python3 -c "import json; print(json.dumps(json.load(open('$HOME/.claude/settings.json'))['hooks'], indent=2))"
 ```
 
 **Show the hook config file** so viewers see it's a real integration.
@@ -281,7 +281,7 @@ Buy 0.0001 BTC at current market price on Binance spot
 
 # --- Show configs ---
 exit
-cat /home/iyke/.claude/hooks/tradeguard.json
+python3 -c "import json; print(json.dumps(json.load(open('$HOME/.claude/settings.json'))['hooks'], indent=2))"
 cat /home/iyke/coding/tradeguard/config/risk-rules.json
 
 # 4. Back to browser → scroll through README
@@ -373,7 +373,7 @@ claude mcp list
 **If TradeGuard doesn't block:**
 ```bash
 # Verify hook is registered
-cat /home/iyke/.claude/hooks/tradeguard.json
+python3 -c "import json; print(json.dumps(json.load(open('$HOME/.claude/settings.json'))['hooks'], indent=2))"
 # Should show the PreToolUse hook
 
 # Test manually

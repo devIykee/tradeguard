@@ -163,24 +163,29 @@ Follow the browser OAuth flow. Grant scopes: Market data + Account + Trade.
 
 ### Step 2: Install TradeGuard hook
 
-```bash
-# In your Claude Code project directory:
-mkdir -p .claude/hooks
-cp /path/to/tradeguard/.claude/hooks/tradeguard.json .claude/hooks/
-```
-
-Edit `.claude/hooks/tradeguard.json` — update the `command` to the absolute path of `tradeguard/bin/validate-trade.js`:
+Hooks are registered in `settings.json` — either `~/.claude/settings.json` (all projects) or `.claude/settings.json` (one project). Add the `hooks` block, keeping any existing keys in the file:
 
 ```json
 {
   "hooks": {
-    "PreToolUse": [{
-      "matcher": "mcp__binance-mcp-server__.*",
-      "command": "/absolute/path/to/tradeguard/bin/validate-trade.js"
-    }]
+    "PreToolUse": [
+      {
+        "matcher": "mcp__binance-mcp-server__.*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/absolute/path/to/tradeguard/bin/validate-trade.js"
+          }
+        ]
+      }
+    ]
   }
 }
 ```
+
+The nested `hooks` array inside the matcher is required — a flat `{ matcher, command }` object is silently ignored.
+
+**Using multiple Claude Code profiles?** Each `CLAUDE_CONFIG_DIR` is a separate config root, so register the hook in every profile you plan to demo from (e.g. `~/.claude-b/settings.json`, `~/.claude-c/settings.json`).
 
 ---
 
@@ -297,8 +302,8 @@ tradeguard/
 ├── tests/unit/             # 61 tests, contract suite + per-rule tests
 ├── config/
 │   └── risk-rules.json     # User-editable thresholds
-├── .claude/hooks/
-│   └── tradeguard.json     # Hook registration (copy to your project)
+├── .claude/
+│   └── settings.json       # Hook registration (copy the hooks block to your own settings.json)
 ├── ARCHITECTURE.md
 ├── PHASE_0_FINDINGS.md
 ├── PHASE_0.5_COMPETITIVE.md

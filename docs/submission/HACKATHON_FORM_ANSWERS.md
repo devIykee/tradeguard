@@ -115,27 +115,30 @@ A browser window opens. Complete OAuth flow:
 
 ### Step 2: Install TradeGuard hook
 
-```bash
-# In your Claude Code project directory (e.g., /home/yourname):
-cd /home/yourname
-mkdir -p .claude/hooks
-cp /path/to/tradeguard/.claude/hooks/tradeguard.json .claude/hooks/
-```
-
-Edit `.claude/hooks/tradeguard.json` — update the `command` path to point to your tradeguard installation:
+Hooks live in `settings.json`, not in a `hooks/` directory. Edit `~/.claude/settings.json` (applies to all projects) and add the `hooks` block, keeping existing keys intact:
 
 ```json
 {
   "hooks": {
-    "PreToolUse": [{
-      "matcher": "mcp__binance-mcp-server__.*",
-      "command": "/absolute/path/to/tradeguard/bin/validate-trade.js"
-    }]
+    "PreToolUse": [
+      {
+        "matcher": "mcp__binance-mcp-server__.*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/absolute/path/to/tradeguard/bin/validate-trade.js"
+          }
+        ]
+      }
+    ]
   }
 }
 ```
 
-Example: `/home/yourname/tradeguard/bin/validate-trade.js`
+The nested `hooks` array inside the matcher is required by the schema — a flat `{ matcher, command }` object is silently ignored, and the gate never fires.
+
+If you run multiple Claude Code profiles via `CLAUDE_CONFIG_DIR`, register the hook in each profile's `settings.json`.
+
 
 ### Step 3: Start Claude Code
 
@@ -282,7 +285,7 @@ Restart TradeGuard (if running as MCP server) or restart Claude Code (if using h
 ### Verify hook is registered (Mode 1 only):
 
 ```bash
-cat /home/yourname/.claude/hooks/tradeguard.json
+cat /home/yourname/.claude/settings.json
 ```
 
 Should show the PreToolUse hook config.
@@ -344,9 +347,7 @@ claude mcp add binance-mcp-server --transport http https://agent.binance.com/mcp
 
 Check hook is registered:
 ```bash
-cat ~/.claude/hooks/tradeguard.json
-# OR
-cat /your/project/.claude/hooks/tradeguard.json
+python3 -c "import json; print(json.load(open('$HOME/.claude/settings.json')).get('hooks'))"
 ```
 
 If file doesn't exist, repeat Step 2 of Mode 1 setup.
