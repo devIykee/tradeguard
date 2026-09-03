@@ -248,10 +248,30 @@ deviation_pct = abs((proposed_price - live_price) / live_price) * 100
 
 **Rationale for 2.0%:**
 
-BTCUSDT and ETHUSDT 1-minute ATR (Average True Range) over the past 30 days (as of Sep 2026) typically runs 0.3–0.8% in normal conditions, spiking to 1.5–2.5% during volatile sessions (e.g. macro news, liquidation cascades). A 2% threshold:
-- Allows normal intraday volatility (agent proposes limit order 1% above mid-market to ensure fill → passes)
-- Blocks stale prices from context cached >15 minutes ago during a 3% move → denied
-- Blocks outright hallucinations (agent invents a price 10% off market) → denied
+Measured against live Binance klines on 2026-09-03 (true range as % of close, across the three whitelisted symbols):
+
+| symbol | timeframe | median | p90 | p99 | max |
+|---|---|---|---|---|---|
+| BTCUSDT | 1m | 0.047% | 0.104% | 0.200% | 0.369% |
+| BTCUSDT | 5m | 0.132% | 0.266% | 0.480% | 0.893% |
+| BTCUSDT | 15m | 0.198% | 0.428% | 0.716% | 1.002% |
+| ETHUSDT | 1m | 0.067% | 0.137% | 0.281% | 0.613% |
+| ETHUSDT | 5m | 0.171% | 0.356% | 0.730% | 1.453% |
+| ETHUSDT | 15m | 0.250% | 0.554% | 1.259% | 1.777% |
+| BNBUSDT | 1m | 0.041% | 0.084% | 0.150% | 0.259% |
+| BNBUSDT | 5m | 0.111% | 0.219% | 0.439% | 0.701% |
+| BNBUSDT | 15m | 0.176% | 0.354% | 0.720% | 1.033% |
+
+(1000 candles for 1m/5m, 500 for 15m. Reproduce with `/api/v3/klines`.)
+
+The worst single 15-minute candle in the sample moved 1.78% (ETHUSDT); every 1-minute candle stayed under 0.62%. So 2.0% sits above the entire measured distribution — including the tail — with the tightest margin on ETHUSDT 15m (1.78% vs the 2.0% ceiling, ~0.2pp of headroom).
+
+What that means in practice:
+- A limit order placed off a price fetched seconds ago passes comfortably; p99 1-minute range is under 0.3% on all three symbols.
+- A price cached 15+ minutes ago during a fast move can exceed 2% and gets denied — which is the intended catch.
+- Outright hallucinations (10%+ off market) are denied by a wide margin.
+
+**Caveat on the sample:** these are calm-market numbers. During macro releases or liquidation cascades, 15-minute ranges on ETH have historically reached 3–5%, which would push legitimate limit orders past a 2% ceiling. The measurement above does not cover such a window. If false positives show up in volatile sessions, raise `maxPriceDeviationPct` or set a per-symbol override for ETHUSDT — ETH is the binding constraint of the three, and BNBUSDT has the most headroom (max 1.03%).
 
 **Tunable per-symbol:** Config supports `symbolSpecificDeviations: { "BTCUSDT": 2.0, "SOLUSDT": 3.5 }` for higher-vol pairs. Not implemented in core tier, noted as enhancement.
 
