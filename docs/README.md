@@ -9,7 +9,8 @@ docs/
 │   └── AGENT_AGNOSTIC_PLAN.md   Design notes for MCP proxy server mode
 │
 ├── guides/
-│   └── DEMO_VIDEO_GUIDE.md      Step-by-step demo recording guide with video script
+│   ├── DEMO_VIDEO_GUIDE.md      Step-by-step demo recording guide with video script
+│   └── SESSION_HANDOFF.md       Context primer for starting a fresh Claude Code session
 │
 └── submission/
     ├── PHASE_0_FINDINGS.md      Binance documentation verification report
@@ -26,6 +27,7 @@ docs/
 - **Building a new rule?** → [DEVELOPMENT.md](architecture/DEVELOPMENT.md)
 - **API reference?** → [API.md](architecture/API.md)
 - **Recording the demo video?** → [DEMO_VIDEO_GUIDE.md](guides/DEMO_VIDEO_GUIDE.md)
+- **Starting a fresh Claude session?** → [SESSION_HANDOFF.md](guides/SESSION_HANDOFF.md)
 - **Filling the hackathon form?** → [HACKATHON_FORM_ANSWERS.md](submission/HACKATHON_FORM_ANSWERS.md)
 - **Submitting to hackathon?** → [SUBMISSION_CHECKLIST.md](submission/SUBMISSION_CHECKLIST.md)
 
