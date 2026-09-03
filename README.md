@@ -4,8 +4,7 @@
 
 Blocks agent-proposed trades violating user-defined risk rules *before* they reach Binance's own confirmation step. Two independent checks, not one replacing the other.
 
-**Binance Agent OS Mini Hackathon — Track A: Trading Workflows**  
-Submission deadline: 2026-09-08 23:59 UTC
+**Binance Agent OS Mini Hackathon — Track A: Trading Workflows**
 
 ---
 
@@ -31,13 +30,20 @@ If any rule fails, the trade is blocked **before reaching Binance's confirm-befo
 
 ---
 
-## The Differentiator: PriceDeviationRule
+## PriceDeviationRule
 
-**This is the core innovation.** Neither `acevod/trading-guardian-binance-agent-os` (advisory-only Claude Skill) nor other hackathon submissions implement this check.
+Leverage and size caps check the agent's intent. This rule checks whether the agent's
+*view of the market* is still true.
 
-If the agent's reasoning references "current BTCUSDT is $95,000" (from cached context, stale web search, or hallucination) but live market shows $68,000, **TradeGuard blocks the trade before the human sees it**.
+If the agent proposes a limit order at $95,000 — from context cached twenty minutes ago,
+a stale web result, or a hallucination — while the live market is at $68,000, the order
+is denied before it reaches Binance's confirmation step. The rule fetches the current
+price at validation time and compares; it does not trust the price in the payload.
 
-Competitor implementations validate leverage and size but trust whatever price the agent proposes. TradeGuard fetches live price from Binance's public API and denies trades with >2% deviation.
+The 2% default sits above measured intraday true range for all three whitelisted symbols
+(1-minute p99 under 0.3%; worst 15-minute candle 1.78% on ETHUSDT). See
+[ARCHITECTURE.md](docs/architecture/ARCHITECTURE.md) for the measurements and the
+caveat about volatile sessions.
 
 ---
 
@@ -185,19 +191,19 @@ Hooks are registered in `settings.json` — either `~/.claude/settings.json` (al
 
 The nested `hooks` array inside the matcher is required — a flat `{ matcher, command }` object is silently ignored.
 
-**Using multiple Claude Code profiles?** Each `CLAUDE_CONFIG_DIR` is a separate config root, so register the hook in every profile you plan to demo from (e.g. `~/.claude-b/settings.json`, `~/.claude-c/settings.json`).
+**Using multiple Claude Code profiles?** Each `CLAUDE_CONFIG_DIR` is a separate config root, so register the hook in every profile you use (e.g. `~/.claude-b/settings.json`, `~/.claude-c/settings.json`).
 
 ---
 
-## Fund Agentic Sub-Account (Optional for Demo)
+## Fund the Agentic Sub-Account
 
-Transfer funds manually via Binance web UI:
+The agent cannot move funds into its own sub-account — that transfer is always manual, via the Binance web UI:
 
 ```
 https://www.binance.com/en/my/sub-account/asset-management/transfer?asset=BTC
 ```
 
-**Not required for demo** — all blocked scenarios work with zero funds. Only needed if you want to show one passing trade executing.
+Funding is only needed for orders that actually execute. Rule denials happen before the order reaches Binance, so they work on an empty sub-account.
 
 ---
 
@@ -215,59 +221,6 @@ Edit `config/risk-rules.json` — thresholds live here, never in code:
 ```
 
 Rebuild after changes: `npm run build`
-
----
-
-## Demo Scenarios
-
-### Scenario 1: Excessive Leverage (blocked)
-
-In your agent:
-
-```
-Open a 10x leveraged long position on BTCUSDT, 0.01 BTC
-```
-
-**Expected:**  
-❌ TradeGuard blocks with "Leverage 10x exceeds max allowed 5x"
-
----
-
-### Scenario 2: Symbol Not in Whitelist (blocked)
-
-```
-Buy 100 DOGE at market on Binance spot
-```
-
-**Expected:**  
-❌ TradeGuard blocks with "Symbol 'DOGEUSDT' not in whitelist. Allowed: btcusdt, ethusdt, bnbusdt"
-
----
-
-### Scenario 3: Price Deviation — THE KEY FEATURE (blocked)
-
-```
-Check current BTCUSDT price, then place a limit buy for 0.01 BTC at a price 10% above market
-```
-
-**Expected:**  
-❌ TradeGuard blocks with "Proposed price $71,500 deviates 10.0% from live market $65,000 (max allowed 2.0%)"
-
-**This is the differentiator** — catches stale or hallucinated prices that other validators miss.
-
----
-
-### Scenario 4: Valid Trade (passes validation)
-
-```
-Buy 0.001 BTC at market on Binance spot
-```
-
-**Expected:**  
-✅ TradeGuard validation passes  
-✅ Trade proceeds to Binance's confirm-before-execute prompt  
-✅ Human reviews and confirms  
-✅ Trade executes
 
 ---
 
@@ -331,7 +284,7 @@ See `ARCHITECTURE.md` for full breakdown.
 
 | File | Description |
 |------|-------------|
-| [README.md](README.md) | Installation, demo scenarios (this file) |
+| [README.md](README.md) | Installation and setup (this file) |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | Contribution guidelines, PR process |
 | [docs/architecture/ARCHITECTURE.md](docs/architecture/ARCHITECTURE.md) | Full design, SOLID principles, data flow |
 | [docs/architecture/API.md](docs/architecture/API.md) | Complete API reference with examples |
@@ -341,9 +294,9 @@ See `ARCHITECTURE.md` for full breakdown.
 
 ## Limitations (By Design)
 
-- **MCP tool names unconfirmed**: Hook/proxy matches `.*order.*|.*trade.*` as fallback — tool names may vary
-- **Bearer token management**: Mode 1 requires manual token extraction (OAuth spec doesn't provide programmatic refresh)
-- **No VelocityLimitRule**: Nice-to-have feature deferred (7-day hackathon window)
+- **Spot orders only, under the scopes Binance currently grants.** Futures order placement and `changeInitialLeverage` are not exposed by the Binance MCP server for `mcp:spot:trade` / `mcp:account:read` / `mcp:margin:loan` / `mcp:wallet:transfer` / `mcp:master:read`. `MaxLeverageRule` gates any order payload carrying a leverage field, but no such payload can be produced on an account without a futures trade scope. See [ARCHITECTURE.md](docs/architecture/ARCHITECTURE.md) for the verified tool surface.
+- **Bearer token management.** MCP proxy mode takes the token via `BINANCE_TOKEN` and does not refresh it. Tokens expire; re-authenticate and restart the server.
+- **No velocity or drawdown rule.** Rate limiting across trades and cumulative-loss circuit breaking are not implemented.
 
 ---
 
@@ -353,12 +306,8 @@ MIT — see `LICENSE` file.
 
 ---
 
-## Submission
+## Repository
 
-**Binance Agent OS Mini Hackathon — Track A: Trading Workflows**
+https://github.com/devIykee/tradeguard
 
-- **GitHub**: https://github.com/devIykee/tradeguard
-- **Video**: [Coming soon]
-- **Deadline**: 2026-09-08 23:59 UTC
-
-Built by deviykee (eokorie1911@gmail.com)
+Built for the Binance Agent OS Mini Hackathon (Track A — Trading Workflows).
