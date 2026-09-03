@@ -88,34 +88,52 @@ Confirm you've read the repo, then wait for my next instruction.
 
 ## Prompt B — Recording session (demo project)
 
-For recording, launch from `/home/iyke/demo-project`. A `CLAUDE.md` there already tells
-Claude how to behave — it loads automatically, survives `/clear`, and keeps Claude from
-wandering the filesystem when you ask for a trade.
+Launch from `/home/iyke/demo-project` using the **claude-c** profile:
 
-No primer needed. Just start the session and go straight into the demo prompts:
+```bash
+claude-c
+```
 
-```
-Open a 10x leveraged long position on BTCUSDT, 0.01 BTC
-```
+`CLAUDE.md` there loads automatically, survives `/clear`, and tells Claude to skip
+deliberation and call tools directly. No primer needed.
+
+Confirm it loaded: run `/context` and look under **Memory files**.
+
+### Demo prompts, in order
 
 ```
 Buy 100 DOGE at market on Binance spot
 ```
+→ denied: `Symbol "DOGEUSDT" not in whitelist. Allowed: btcusdt, ethusdt, bnbusdt`
+
+```
+Buy 1 BTC at market on Binance spot
+```
+→ denied: `Order size 77718.91 USDT exceeds max allowed 1000.00 USDT`
 
 ```
 What is the current BTCUSDT price?
 ```
+→ answers normally (reads pass through untouched)
 
 ```
-Place a limit buy for 0.01 BTC at $200,000
+Place a limit buy for 0.001 BTC at $200,000
 ```
+→ denied: `Proposed price $200000.00 deviates 157.40% from live market $77700.86`
+**This is the differentiator — hold on it.**
 
 ```
 Buy 0.0001 BTC at market on Binance spot
 ```
+→ passes TradeGuard, reaches Binance's own confirmation. Decline when asked.
 
-The first four should be denied by TradeGuard with the reason visible. The fifth passes
-validation and reaches Binance's own confirmation prompt — decline it when asked.
+### On the 10x leverage prompt
 
-If Claude starts exploring files instead of calling the MCP tool, the `CLAUDE.md` didn't
-load. Check with `/context` and look under **Memory files**.
+Don't use it. Futures order placement and `changeInitialLeverage` are **not exposed**
+by the Binance MCP server under the granted scopes (`spot:trade`, `account:read`,
+`margin:loan`, `wallet:transfer`, `master:read`) — only spot writes exist. The request
+can't reach a futures endpoint, so the denial you see would be a scope limitation, not
+TradeGuard working.
+
+The three spot blocks above are all real TradeGuard denials against `spot.newOrder`.
+Use those.

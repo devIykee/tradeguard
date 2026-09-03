@@ -199,6 +199,57 @@ A rule that only needs price data must not depend on an interface that also expo
 
 ---
 
+## Real Binance MCP Tool Surface (Verified 2026-09-03)
+
+Measured against a live authenticated session, not inferred from docs. `tools/list`
+returns **50 tools**; sweeping every `tool_search` category and paginating reveals
+**277 total**.
+
+**Two-tier tool exposure.** The server keeps most tools hidden and reachable only
+through a wrapper:
+
+```
+tool_execute { toolName: "spot.newOrder",
+               arguments: { symbol, side, type, quantity, price? } }
+```
+
+A hook that reads only top-level `tool_input` sees `{toolName, arguments}` and no
+`symbol` at all. The real trade parameters are one level down. `bin/validate-trade.js`
+unwraps this in `unwrapBinanceCall()`.
+
+**Order placement is spot-only under these scopes.** Granted scopes on the test
+account: `mcp:account:read`, `mcp:spot:trade`, `mcp:margin:loan`,
+`mcp:wallet:transfer`, `mcp:master:read`.
+
+| Capability | Exposed? |
+|---|---|
+| `spot.newOrder`, `sorOrder`, `orderOco`, `orderList*` | yes |
+| `margin.marginAccountNewOrder`, `NewOco`, `NewOto` | yes |
+| `futures_usds.newOrder` / `futures_coin.newOrder` | **no** |
+| `changeInitialLeverage` (any futures) | **no** |
+| Futures reads (tickers, klines, positions, account) | yes |
+
+The only leverage-adjacent tool present is `futures_usds.notionalAndLeverageBrackets`,
+which is read-only. So `MaxLeverageRule` cannot fire from a real futures order on this
+account — the futures write path does not exist to intercept. It still fires correctly
+when leverage appears in an order payload, and would gate `futures_usds.newOrder` if a
+`mcp:futures:trade` scope were granted. **For the demo, the live blocks are
+SymbolWhitelistRule, MaxOrderSizeRule, and PriceDeviationRule against `spot.newOrder`.**
+
+**Order placement must be an allowlist, not a keyword match.** `order` as a substring
+appears in `queryOrder`, `allOrders`, `deleteOrder`, `getOpenOrders`, `orderAmendKeepPriority`
+and dozens of other read/cancel tools. Matching `/order/i` treats every order lookup as
+a trade proposal and denies it for having no symbol — which is exactly the failure seen
+in the first live demo run. `isOrderPlacement()` uses an explicit prefix allowlist and
+excludes `orderTest` / `sorOrderTest`, which validate without placing.
+
+**Leverage is a separate call on Binance.** A futures `newOrder` payload carries no
+`leverage` field; leverage is set beforehand via `changeInitialLeverage`. Market type is
+therefore derived from the tool namespace (`futures_*` / `margin.` / `spot.`), never
+from the presence of a leverage field.
+
+---
+
 ## Rules (Core Tier — Must Ship)
 
 ### 1. MaxLeverageRule
