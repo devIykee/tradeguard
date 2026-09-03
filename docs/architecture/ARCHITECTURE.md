@@ -67,7 +67,7 @@ TradeGuard fills that gap with **deterministic, config-driven risk rules** that 
   "PreToolUse": [
     {
       "matcher": "mcp__binance-mcp-server__.*",
-      "command": "/home/iyke/coding/tradeguard/bin/validate-trade.js"
+      "command": "/path/to/tradeguard/bin/validate-trade.js"
     }
   ]
 }
@@ -87,7 +87,7 @@ TradeGuard fills that gap with **deterministic, config-driven risk rules** that 
     "leverage": 10
   },
   "tool_use_id": "toolu_01...",
-  "cwd": "/home/iyke/coding",
+  "cwd": "/path/to/your/project",
   "permission_mode": "default"
 }
 ```
@@ -98,7 +98,7 @@ TradeGuard fills that gap with **deterministic, config-driven risk rules** that 
   "hookSpecificOutput": {
     "hookEventName": "PreToolUse",
     "permissionDecision": "deny",
-    "permissionDecisionReason": "Leverage 10x exceeds max allowed 5x (config: /home/iyke/coding/tradeguard/config/risk-rules.json)"
+    "permissionDecisionReason": "Leverage 10x exceeds max allowed 5x (config: /path/to/tradeguard/config/risk-rules.json)"
   }
 }
 ```
@@ -185,7 +185,7 @@ A rule that only needs price data must not depend on an interface that also expo
 ## Data Flow
 
 1. **Agent proposes trade:** Claude calls `mcp__binance-mcp-server__place_order` with `{ symbol, side, quantity, leverage, ... }`
-2. **Hook fires:** Claude Code's PreToolUse hook invokes `/home/iyke/coding/tradeguard/bin/validate-trade.js`, passing tool input as JSON on stdin
+2. **Hook fires:** Claude Code's PreToolUse hook invokes `/path/to/tradeguard/bin/validate-trade.js`, passing tool input as JSON on stdin
 3. **RuleEngine evaluates:**
    - `validate-trade.js` parses stdin, loads `/config/risk-rules.json`
    - Instantiates `MaxLeverageRule`, `MaxOrderSizeRule`, `PriceDeviationRule`, `SymbolWhitelistRule`

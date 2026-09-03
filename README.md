@@ -301,14 +301,15 @@ tradeguard/
 │   └── start-server.js     # MCP server entry point (Mode 1)
 ├── tests/unit/             # 61 tests, contract suite + per-rule tests
 ├── config/
-│   └── risk-rules.json     # User-editable thresholds
-├── .claude/
-│   └── settings.json       # Hook registration (copy the hooks block to your own settings.json)
-├── ARCHITECTURE.md
-├── PHASE_0_FINDINGS.md
-├── PHASE_0.5_COMPETITIVE.md
+│   ├── risk-rules.json     # User-editable thresholds
+│   └── risk-rules.schema.json
+├── docs/architecture/      # ARCHITECTURE.md, API.md, DEVELOPMENT.md
+├── CONTRIBUTING.md
 └── README.md
 ```
+
+The PreToolUse hook is registered in your own `settings.json` — see
+[Mode 2 Setup](#mode-2-setup-claude-code-hook-claude-code-only) for the block to add.
 
 ---
 
@@ -335,12 +336,6 @@ See `ARCHITECTURE.md` for full breakdown.
 | [docs/architecture/ARCHITECTURE.md](docs/architecture/ARCHITECTURE.md) | Full design, SOLID principles, data flow |
 | [docs/architecture/API.md](docs/architecture/API.md) | Complete API reference with examples |
 | [docs/architecture/DEVELOPMENT.md](docs/architecture/DEVELOPMENT.md) | Dev guide, troubleshooting, rule checklist |
-| [docs/guides/DEMO_VIDEO_GUIDE.md](docs/guides/DEMO_VIDEO_GUIDE.md) | Demo recording guide with video script |
-| [docs/submission/HACKATHON_FORM_ANSWERS.md](docs/submission/HACKATHON_FORM_ANSWERS.md) | Pre-written hackathon form answers |
-| [docs/submission/PHASE_0_FINDINGS.md](docs/submission/PHASE_0_FINDINGS.md) | Binance doc verification report |
-| [docs/submission/PHASE_0.5_COMPETITIVE.md](docs/submission/PHASE_0.5_COMPETITIVE.md) | Competitive analysis |
-
-Total: **4,730+ lines** of documentation.
 
 ---
 

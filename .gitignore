@@ -33,3 +33,11 @@ npm-debug.log*
 tmp/
 temp/
 *.tmp
+
+# Local development / hackathon process notes — kept on disk, not published
+docs/submission/
+docs/guides/
+docs/architecture/AGENT_AGNOSTIC_PLAN.md
+
+# Local hook wiring (machine-specific absolute paths)
+.claude/settings.json
